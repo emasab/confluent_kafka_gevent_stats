@@ -1,5 +1,5 @@
 import confluent_kafka
-from gevent import monkey, get_hub
+from gevent import monkey, get_hub, spawn
 from gevent.event import AsyncResult
 from gevent.threadpool import ThreadPoolExecutor
 from random import randbytes
@@ -7,7 +7,8 @@ import time
 import numpy
 import os
 import sys
-monkey.patch_all()
+monkey.patch_all(subprocess=False)
+original_sleep = monkey.saved['time']['sleep']
 
 
 class ProducerAdapter(object):
@@ -71,6 +72,29 @@ class Stats(object):
         self.messages = []
 
 
+# From time to time it has to return control to
+# the gevent loop to execute other things like
+# produce requests.
+# If you increment the modulo, latency increases because has very few CPU time
+# to execute other things.
+#
+# In gevent it's better to execute CPU intensive code in a different
+# native thread, with ThreadPoolExecutor, as suggested here:
+# https://www.gevent.org/api/gevent.threadpool.html
+# Set the CPU_INTENSIVE env variable to "tpe" to run it in
+# a ThreadPoolExecutor.
+#
+# Even if using the TPE latency increases as only one thread can hold the
+# GIL. Unpatched multiprocessing or C/C++ modules are better
+# to execute CPU intensive code.
+def cpu_intensive(sleep):
+    i = 0
+    while True:
+        i = (i + 1) % 1000000
+        if i == 0:
+            sleep(0.001)
+
+
 if __name__ == "__main__":
     if "BOOTSTRAP_SERVERS" not in os.environ:
         print("BOOTSTRAP_SERVERS env variable required")
@@ -83,13 +107,20 @@ if __name__ == "__main__":
     topic = os.environ["TOPIC"]
     linger_ms = os.environ.get("LINGER_MS", "10")
 
+    N = int(os.environ.get("PRODUCE_RATE", "3000"))
+    stats_interval = int(os.environ.get("STATS_INTERVAL", "10"))
+    cpu_intensive_var = os.environ.get("CPU_INTENSIVE", "coroutine") == "tpe"
+
+    if cpu_intensive_var == "tpe":
+        ThreadPoolExecutor(max_workers=1).submit(cpu_intensive, original_sleep)
+    else:
+        spawn(cpu_intensive, time.sleep)
+
     stats = Stats()
     producer = ProducerAdapter({"bootstrap.servers": bootstrap_servers,
                                 "linger.ms": linger_ms})
     producer.start()
 
-    N = int(os.environ.get("PRODUCE_RATE", "3000"))
-    stats_interval = int(os.environ.get("STATS_INTERVAL", "10"))
     # produce N messages per seconds
     seconds = 0
     while True:
