@@ -1,0 +1,3 @@
+confluent-kafka
+gevent
+numpy
