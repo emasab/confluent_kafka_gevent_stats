@@ -1,0 +1,151 @@
+---
+version: '3.5'
+services:
+
+  zookeeper_4:
+    image: confluentinc/cp-zookeeper
+    hostname: zookeeper_4
+    container_name: zookeeper_4
+    restart: always
+    ports:
+      - "9100:9999"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      KAFKA_JMX_PORT: 9999
+      #EXTRA_ARGS: ${GRAFANA_AGENT_ZK}
+      KAFKA_JMX_HOSTNAME: localhost
+      # for 5.4.x:
+      KAFKA_OPTS: -Dzookeeper.4lw.commands.whitelist=*
+
+  broker_4:
+    image: confluentinc/cp-kafka
+    hostname: broker_4
+    container_name: broker_4
+    restart: always
+    ports:
+      - "9392:9092"
+      - "9492:29092"
+      - "40001:10000"
+    environment:
+      KAFKA_LOG4J_ROOT_LOGLEVEL: INFO
+      KAFKA_JMX_PORT: 10000
+      KAFKA_JMX_HOSTNAME: localhost
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper_4:2181'
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_MIN_INSYNC_REPLICAS: 2
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: BROKER:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_LISTENERS: BROKER://:9092,PLAINTEXT_HOST://:29092
+      KAFKA_ADVERTISED_LISTENERS: BROKER://broker_4:9092,PLAINTEXT_HOST://localhost:9492
+      KAFKA_INTER_BROKER_LISTENER_NAME: BROKER
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+
+  broker2_4:
+    image: confluentinc/cp-kafka
+    hostname: broker2_4
+    container_name: broker2_4
+    restart: always
+    ports:
+      - "9592:9292"
+      - "9692:29292"
+      - "40002:12000"
+    environment:
+      KAFKA_LOG4J_ROOT_LOGLEVEL: INFO
+      KAFKA_JMX_PORT: 12000
+      KAFKA_JMX_HOSTNAME: localhost
+      KAFKA_BROKER_ID: 2
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper_4:2181'
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_MIN_INSYNC_REPLICAS: 2
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: BROKER:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_LISTENERS: BROKER://:9292,PLAINTEXT_HOST://:29292
+      KAFKA_ADVERTISED_LISTENERS: BROKER://broker2_4:9292,PLAINTEXT_HOST://localhost:9692
+      KAFKA_INTER_BROKER_LISTENER_NAME: BROKER
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+
+  broker3_4:
+    image: confluentinc/cp-kafka
+    hostname: broker3_4
+    container_name: broker3_4
+    restart: always
+    ports:
+      - "9792:9392"
+      - "9892:29392"
+      - "40003:13000"
+    environment:
+      KAFKA_LOG4J_ROOT_LOGLEVEL: INFO
+      KAFKA_JMX_PORT: 13000
+      KAFKA_JMX_HOSTNAME: localhost
+      KAFKA_BROKER_ID: 3
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper_4:2181'
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_MIN_INSYNC_REPLICAS: 2
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: BROKER:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_LISTENERS: BROKER://:9392,PLAINTEXT_HOST://:29392
+      KAFKA_ADVERTISED_LISTENERS: BROKER://broker3_4:9392,PLAINTEXT_HOST://localhost:9892
+      KAFKA_INTER_BROKER_LISTENER_NAME: BROKER
+
+  broker4_4:
+    image: confluentinc/cp-kafka
+    hostname: broker4_4
+    container_name: broker4_4
+    restart: always
+    ports:
+      - "9992:9392"
+      - "10092:29392"
+      - "40004:13000"
+    environment:
+      KAFKA_LOG4J_ROOT_LOGLEVEL: INFO
+      KAFKA_JMX_PORT: 13000
+      KAFKA_JMX_HOSTNAME: localhost
+      KAFKA_BROKER_ID: 4
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper_4:2181'
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_MIN_INSYNC_REPLICAS: 2
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: BROKER:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_LISTENERS: BROKER://:9392,PLAINTEXT_HOST://:29392
+      KAFKA_ADVERTISED_LISTENERS: BROKER://broker4_4:9392,PLAINTEXT_HOST://localhost:10092
+      KAFKA_INTER_BROKER_LISTENER_NAME: BROKER
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+
+  broker5_4:
+    image: confluentinc/cp-kafka
+    hostname: broker5_4
+    container_name: broker5_4
+    restart: always
+    ports:
+      - "10192:9392"
+      - "10292:29392"
+      - "40005:13000"
+    environment:
+      KAFKA_LOG4J_ROOT_LOGLEVEL: INFO
+      KAFKA_JMX_PORT: 13000
+      KAFKA_JMX_HOSTNAME: localhost
+      KAFKA_BROKER_ID: 5
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper_4:2181'
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_MIN_INSYNC_REPLICAS: 2
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: BROKER:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_LISTENERS: BROKER://:9392,PLAINTEXT_HOST://:29392
+      KAFKA_ADVERTISED_LISTENERS: BROKER://broker5_4:9392,PLAINTEXT_HOST://localhost:10292
+      KAFKA_INTER_BROKER_LISTENER_NAME: BROKER
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+
+
+  schema-registry_4:
+    image: confluentinc/cp-schema-registry
+    hostname: schema-registry_4
+    container_name: schema-registry_4
+    restart: always
+    depends_on:
+      - broker_4
+    ports:
+      - "48081:8081"
+      - "10004:10001"
+    environment:
+      SCHEMA_REGISTRY_JMX_PORT: 10001
+      SCHEMA_REGISTRY_JMX_HOSTNAME: localhost
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: broker_4:9092
