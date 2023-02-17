@@ -7,6 +7,7 @@ import time
 import numpy
 import os
 import sys
+import multiprocessing
 monkey.patch_all(subprocess=False)
 original_sleep = monkey.saved['time']['sleep']
 
@@ -87,12 +88,19 @@ class Stats(object):
 # Even if using the TPE latency increases as only one thread can hold the
 # GIL. Unpatched multiprocessing or C/C++ modules are better
 # to execute CPU intensive code.
-def cpu_intensive(sleep):
+#
+# Set the CPU_INTENSIVE env variable to "process" to run it
+# in a subprocess. This way latency is reduced to the original value.
+#
+def cpu_intensive(sleep, q=None):
     i = 0
-    while True:
-        i = (i + 1) % 1000000
-        if i == 0:
-            sleep(0.001)
+    try:
+        while True:
+            i = (i + 1) % 1000000
+            if i == 0:
+                sleep(0.001)
+    except KeyboardInterrupt:
+        pass
 
 
 if __name__ == "__main__":
@@ -109,28 +117,41 @@ if __name__ == "__main__":
 
     N = int(os.environ.get("PRODUCE_RATE", "3000"))
     stats_interval = int(os.environ.get("STATS_INTERVAL", "10"))
-    cpu_intensive_var = os.environ.get("CPU_INTENSIVE", "coroutine") == "tpe"
+    cpu_intensive_var = os.environ.get("CPU_INTENSIVE", "coroutine")
 
+    # Run a CPU intensive process in different ways
+    subprocess = None
+    task = None
+    tpe = ThreadPoolExecutor(max_workers=1)
     if cpu_intensive_var == "tpe":
-        ThreadPoolExecutor(max_workers=1).submit(cpu_intensive, original_sleep)
+        task = tpe.submit(cpu_intensive, original_sleep)
+    elif cpu_intensive_var == "process":
+        subprocess = multiprocessing.Process(target=cpu_intensive,
+                                             args=(original_sleep,))
+        subprocess.start()
     else:
-        spawn(cpu_intensive, time.sleep)
+        task = spawn(cpu_intensive, time.sleep)
 
     stats = Stats()
     producer = ProducerAdapter({"bootstrap.servers": bootstrap_servers,
                                 "linger.ms": linger_ms})
     producer.start()
 
-    # produce N messages per seconds
-    seconds = 0
-    while True:
-        begin = time.time()
-        messages = [producer.produce(topic, randbytes(1024)) for i in range(N)]
-        stats.add(messages)
-        sleep_for = max(0, 1 - (time.time() - begin))
-        time.sleep(sleep_for)
+    try:
+        # produce N messages per seconds
+        seconds = 0
+        while True:
+            begin = time.time()
+            messages = [producer.produce(topic, randbytes(1024))
+                        for i in range(N)]
+            stats.add(messages)
+            sleep_for = max(0, 1 - (time.time() - begin))
+            time.sleep(sleep_for)
 
-        # every [stats_interval] seconds print the statistics and start again
-        seconds = (seconds + 1) % stats_interval
-        if seconds == 0:
-            stats.print()
+            # every [stats_interval] seconds print the statistics
+            # and start again
+            seconds = (seconds + 1) % stats_interval
+            if seconds == 0:
+                stats.print()
+    except KeyboardInterrupt:
+        print("exiting")
