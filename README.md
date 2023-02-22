@@ -2,6 +2,14 @@
 
 # Usage
 
+## Start the docker compose cluster
+
+```sh
+docker-compose up -d
+```
+
+# Gevent only test
+
 ## Environment variables
 
 ### Required
@@ -16,4 +24,19 @@
 Start the test with
 ```sh
 python gevent_kafka.py
+```
+
+
+# Gunicorn test
+
+Start a gunicorn server
+
+```sh
+./gunicorn.sh
+```
+
+Run a k6 test
+```sh
+sudo snap install k6
+k6 run constant-arr-rate.js
 ```

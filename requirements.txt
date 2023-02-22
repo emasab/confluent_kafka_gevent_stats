@@ -1,3 +1,4 @@
 confluent-kafka
 gevent
 numpy
+gunicorn
