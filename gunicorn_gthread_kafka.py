@@ -1,13 +1,10 @@
 import confluent_kafka
-from gevent import get_hub
-from gevent.monkey import get_original
-from gevent.event import AsyncResult
-from gevent.threadpool import ThreadPoolExecutor
-from concurrent.futures import ThreadPoolExecutor as PatchedThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor
 from random import randbytes
 import time
 import os
 import sys
+import time
 
 
 class ProducerAdapter(object):
@@ -17,10 +14,6 @@ class ProducerAdapter(object):
         self._producer = confluent_kafka.Producer(configs)
         self._executor = ThreadPoolExecutor(max_workers=1)
         self._loop_f = self._poll_loop
-        self._unpatched_sleep = get_original("time", "sleep")
-        # self._executor = PatchedThreadPoolExecutor(max_workers=1)
-        # self._loop_f = self._poll_loop_gevent
-        self._loop = get_hub().loop
 
     def start(self):
         self._poll_task = self._executor.submit(self._loop_f)
@@ -29,32 +22,21 @@ class ProducerAdapter(object):
         self._stopped = True
         self._poll_task.result()
 
-    def _poll_loop_gevent(self):
-        while not self._stopped:
-            self._producer.poll(0)
-            time.sleep(0.1)
-        self._producer.flush()
-
     def _poll_loop(self):
         while not self._stopped:
             self._producer.poll(1)
-            #self._producer.poll(0)
-            #self._unpatched_sleep(0.1)
         self._producer.flush()
 
     def produce(self, topic, message):
-        result = AsyncResult()
+        result = Future()
         start = time.time()
 
-        def on_delivery_gevent(err, msg):
+        def on_delivery(err, msg):
             diff = time.time() - start
             if err:
                 result.set_exception(err)
             else:
                 result.set_result((msg, diff))
-
-        def on_delivery(err, msg):
-            self._loop.run_callback_threadsafe(on_delivery_gevent, err, msg)
 
         self._producer.produce(topic, message, on_delivery=on_delivery)
         return result
@@ -86,7 +68,8 @@ class App(object):
         self.producer.start()
 
     def __call__(self, environ, start_response):
-        _, latency = self.producer.produce(self.topic, randbytes(1024)).get()
+        # print(id(self.producer))
+        _, latency = self.producer.produce(self.topic, randbytes(1024)).result()
         data = f"Message sent, latency: {latency * 1000:0.2f} ms\n"
         start_response("200 OK", [
             ("Content-Type", "text/plain; utf-8"),

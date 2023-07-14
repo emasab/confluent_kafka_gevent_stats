@@ -27,7 +27,7 @@ python gevent_kafka.py
 ```
 
 
-# Gunicorn test
+# Gunicorn gevent test
 
 Start a gunicorn server
 
@@ -40,3 +40,16 @@ Run a k6 test
 sudo snap install k6
 k6 run constant-arr-rate.js
 ```
+
+# Gunicorn gthread test
+
+Start a gunicorn server with gthread
+
+```sh
+WORKER_CLASS=gthread ./gunicorn.sh
+```
+
+Run a k6 test
+```sh
+sudo snap install k6
+k6 run constant-arr-rate.js
