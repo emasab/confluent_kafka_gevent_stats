@@ -66,9 +66,10 @@ class App(object):
         self.topic = os.environ["TOPIC"]
         self.producer = self.create_producer()
         self.producer.start()
+        # print("producer instance:", id(self.producer))
 
     def __call__(self, environ, start_response):
-        # print(id(self.producer))
+        # print("producer instance:", id(self.producer))
         _, latency = self.producer.produce(self.topic, randbytes(1024)).result()
         data = f"Message sent, latency: {latency * 1000:0.2f} ms\n"
         start_response("200 OK", [

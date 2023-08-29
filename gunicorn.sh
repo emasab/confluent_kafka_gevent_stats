@@ -7,10 +7,10 @@ if [ $WORKER_CLASS = "gevent" ]; then
 python -m gunicorn \
     --env TOPIC=$TOPIC \
     --env BOOTSTRAP_SERVERS=$BOOSTRAP_SERVERS \
-    -w 1 -k gevent 'gunicorn_gevent_kafka:create_app()'
+    -w 1 --worker-connections=1000 -k gevent 'gunicorn_gevent_kafka:create_app()'
 elif [ $WORKER_CLASS = "gthread" ]; then
 python -m gunicorn \
     --env TOPIC=$TOPIC \
     --env BOOTSTRAP_SERVERS=$BOOSTRAP_SERVERS \
-    -w 1 -k gthread --threads 5 'gunicorn_gthread_kafka:create_app()'
+    -w 1 --threads=30 -k gthread --threads 5 'gunicorn_gthread_kafka:create_app()'
 fi
